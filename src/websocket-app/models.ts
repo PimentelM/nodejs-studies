@@ -27,6 +27,7 @@ export class EventReminder extends EventEmitter {
     }
 
     public canRegisterReminder(reminder: Reminder) : [canRegister : boolean, message? : string] {
+        if(!isFinite(reminder.date.getTime?.())) return [false, "Invalid date"];
         if(EventReminder.isExpired(reminder)) return [false, "Reminder is already expired"];
         return [true];
     }
