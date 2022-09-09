@@ -1,34 +1,33 @@
-import {randomUUID} from "crypto";
 import EventEmitter from "events";
 
 export type ReminderID = string;
-
 export class Reminder {
-    public readonly id: ReminderID = randomUUID();
     constructor(
+        public readonly id: ReminderID,
         public name: string,
         public date: Date,
     ){}
 }
 
+type Timestamp = number;
 export class EventReminder extends EventEmitter {
     private reminderTimeoutMap : Map<ReminderID, NodeJS.Timeout> = new Map();
 
-    constructor() {
+    constructor(private now : ()=> Timestamp = Date.now) {
         super();
     }
 
-    static isExpired(reminder: Reminder) {
-        return reminder.date.getTime() < Date.now();
+    private isExpired(reminder: Reminder) {
+        return reminder.date.getTime() < this.now();
     }
 
-    static timeUntilReminder(reminder: Reminder) {
-        return reminder.date.getTime() - Date.now();
+    private timeUntilReminder(reminder: Reminder) {
+        return reminder.date.getTime() - this.now();
     }
 
     public canRegisterReminder(reminder: Reminder) : [canRegister : boolean, message? : string] {
         if(!isFinite(reminder.date.getTime?.())) return [false, "Invalid date"];
-        if(EventReminder.isExpired(reminder)) return [false, "Reminder is already expired"];
+        if(this.isExpired(reminder)) return [false, "Reminder is already expired"];
         return [true];
     }
 
@@ -36,7 +35,7 @@ export class EventReminder extends EventEmitter {
         let [canRegister, message] = this.canRegisterReminder(reminder);
         if(!canRegister) throw new Error(message);
 
-        let timeUntilReminder = EventReminder.timeUntilReminder(reminder);
+        let timeUntilReminder = this.timeUntilReminder(reminder);
         let timeoutId = setTimeout(()=>{
             this.emit('reminder', reminder);
             this.reminderTimeoutMap.delete(reminder.id);
