@@ -26,8 +26,14 @@ export class EventReminder extends EventEmitter {
         return reminder.date.getTime() - Date.now();
     }
 
+    public canRegisterReminder(reminder: Reminder) : [canRegister : boolean, message? : string] {
+        if(EventReminder.isExpired(reminder)) return [false, "Reminder is already expired"];
+        return [true];
+    }
+
     public registerReminder(reminder: Reminder) {
-        if(EventReminder.isExpired(reminder)) throw new Error("Reminder is already expired");
+        let [canRegister, message] = this.canRegisterReminder(reminder);
+        if(!canRegister) throw new Error(message);
 
         let timeUntilReminder = EventReminder.timeUntilReminder(reminder);
         let timeoutId = setTimeout(()=>{
@@ -39,6 +45,8 @@ export class EventReminder extends EventEmitter {
     }
 
     public unregisterReminder(reminderID: ReminderID) {
+        if(!this.reminderTimeoutMap.has(reminderID)) return;
+
         clearTimeout(this.reminderTimeoutMap.get(reminderID));
         this.reminderTimeoutMap.delete(reminderID);
     }
