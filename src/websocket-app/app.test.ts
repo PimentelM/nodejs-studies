@@ -180,6 +180,18 @@ describe("Event Reminder App", () => {
                 expect(response).toMatch(/.*Error.*/i)
                 expect(await reminderRepository.findById(id)).toBeUndefined();
             });
+
+            it("Should not register reminder if it's alredy expired", async () => {
+                let id = getValidId();
+                let date = new Date();
+                date.setFullYear(date.getFullYear() - 1);
+                let command = getValidCommand({id, date: date.toISOString()});
+
+                let response = await sendMessageAndWaitForResponse(ws, command);
+
+                expect(response).toMatch(/.*already expired.*/i)
+                expect(await reminderRepository.findById(id)).toBeUndefined();
+            });
         });
 
     });
@@ -196,7 +208,7 @@ function getValidCommand(overwrites?: object, milissecondsFromNow?: number): App
     }
 }
 
-function getValidId(){
+function getValidId() {
     return randomUUID();
 }
 
