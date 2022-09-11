@@ -1,6 +1,8 @@
 import WebSocket from "ws";
 import {randomUUID} from "crypto";
 import {Reminder} from "../models";
+import exp from "constants";
+import {EventEmitter} from "events";
 
 export function waitForSocketState(socket, state) {
     return new Promise<void>(function (resolve) {
@@ -51,4 +53,11 @@ export function getValidReminder(overwrites?: Partial<Reminder>): Reminder {
         overwrites?.name ?? "name",
         overwrites?.date ?? new Date()
     );
+}
+
+export function waitForEvent<T = any>(eventEmitter: EventEmitter, eventName: string, timeout: number) : Promise<T>{
+    return new Promise<T>( (resolve) => {
+        eventEmitter.on(eventName, resolve);
+        setTimeout(resolve, timeout);
+    });
 }

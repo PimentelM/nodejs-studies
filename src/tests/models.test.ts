@@ -1,5 +1,5 @@
 import {EventReminder, Reminder} from "../models";
-import {getValidId, getValidReminder} from "./test-utils";
+import {getValidId, getValidReminder, waitForEvent} from "./test-utils";
 
 describe('Models', () => {
 
@@ -30,11 +30,7 @@ describe('Models', () => {
         it("Reminder should throw a 'reminder' event when it's due", async () => {
             let date = new Date(Date.now() + 10);
             let reminder = getValidReminder({date});
-            let promise = new Promise(resolve => {
-                eventReminder.on("reminder", (reminder: Reminder) => {
-                    resolve(reminder);
-                });
-            })
+            let promise = waitForEvent(eventReminder, "reminder", 30);
 
             eventReminder.registerReminder(reminder);
             let thrownReminder = await promise;
@@ -45,12 +41,7 @@ describe('Models', () => {
         it("Reminder should not be thrown when it is unregistered", async () => {
             let date = new Date(Date.now() + 5);
             let reminder = getValidReminder({date});
-            let promise = new Promise(resolve => {
-                eventReminder.on("reminder", (reminder: Reminder) => {
-                    resolve(reminder);
-                });
-                setTimeout(resolve,10);
-            })
+            let promise = waitForEvent(eventReminder, "reminder", 10);
 
             eventReminder.registerReminder(reminder);
             eventReminder.unregisterReminder(reminder.id);
@@ -61,12 +52,7 @@ describe('Models', () => {
 
         it("Reminder can be overwritten if it is registered again", async () => {
             let reminder = getValidReminder({name: "Old Name", date: new Date(Date.now() + 15)});
-            let promise = new Promise<Reminder>(resolve => {
-                eventReminder.on("reminder", (reminder: Reminder) => {
-                    resolve(reminder);
-                });
-                setTimeout(resolve,30);
-            })
+            let promise = waitForEvent(eventReminder, "reminder", 30);
 
             eventReminder.registerReminder(reminder);
             reminder.name = "New Name";
