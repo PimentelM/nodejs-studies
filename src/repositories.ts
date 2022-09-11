@@ -6,6 +6,8 @@ export interface IReminderRepository {
     findById(reminderID: string): Promise<Reminder | undefined>;
     delete(reminderID: string): Promise<void>;
     findAll(): Promise<Reminder[]>;
+    deleteAll(): Promise<void>;
+    findByName(name: string): Promise<Reminder[]>;
 }
 
 export class InMemoryReminderRepository implements IReminderRepository {
@@ -32,9 +34,13 @@ export class InMemoryReminderRepository implements IReminderRepository {
         return Array.from(this.reminders.values()).filter(reminder => reminder.name === name);
     }
 
+    async deleteAll(): Promise<void> {
+        this.reminders.clear();
+    }
+
 }
 
-export class ReminderRepository implements IReminderRepository {
+export class FileSystemBasedReminderRepository implements IReminderRepository {
     constructor(private folderPath: string) {
         // Create the folder if it does not exist
         if(!fs.existsSync(folderPath)){
@@ -90,6 +96,23 @@ export class ReminderRepository implements IReminderRepository {
             return new Reminder(data.id, data.name, new Date(data.date));
         });
     }
-}
 
+    async findByName(name: string): Promise<Reminder[]> {
+        // Get all the reminders
+        let reminders = await this.findAll();
+
+        // Filter the reminders by name
+        return reminders.filter(reminder => reminder.name === name);
+    }
+
+    async deleteAll(): Promise<void> {
+        // Get all the files in the folder
+        let files = fs.readdirSync(this.folderPath);
+
+        // Delete all the files
+        files.forEach(file => {
+            fs.unlinkSync(`${this.folderPath}/${file}`);
+        });
+    }
+}
 

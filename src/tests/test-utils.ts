@@ -1,4 +1,6 @@
 import WebSocket from "ws";
+import {randomUUID} from "crypto";
+import {Reminder} from "../models";
 
 export function waitForSocketState(socket, state) {
     return new Promise<void>(function (resolve) {
@@ -37,4 +39,16 @@ export async function createOpenSocket(port: number, host = "localhost") {
     let ws = new WebSocket(`ws://${host}:${port}`);
     await waitForSocketState(ws, WebSocket.OPEN);
     return ws;
+}
+
+export function getValidId() {
+    return randomUUID();
+}
+
+export function getValidReminder(overwrites?: Partial<Reminder>): Reminder {
+    return new Reminder(
+        overwrites?.id ?? getValidId(),
+        overwrites?.name ?? "name",
+        overwrites?.date ?? new Date()
+    );
 }

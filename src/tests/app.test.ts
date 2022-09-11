@@ -1,7 +1,13 @@
-import {App, AppCommand} from "./app";
+import {App, AppCommand} from "../app";
 import WebSocket from "ws";
-import {createOpenSocket, sendMessageAndWaitForResponse, waitForNextMessage, waitForSocketState} from "./test-utils";
-import {InMemoryReminderRepository} from "./repositories";
+import {
+    createOpenSocket,
+    getValidId,
+    sendMessageAndWaitForResponse,
+    waitForNextMessage,
+    waitForSocketState
+} from "./test-utils";
+import {InMemoryReminderRepository} from "../repositories";
 import {randomUUID} from "crypto";
 
 describe("Event Reminder App", () => {
@@ -208,7 +214,5 @@ function getValidCommand(overwrites?: object, milissecondsFromNow?: number): App
     }
 }
 
-function getValidId() {
-    return randomUUID();
-}
+
 
