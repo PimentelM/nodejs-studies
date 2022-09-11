@@ -5,7 +5,7 @@
   "author": "Mateus Pimentel <mateus.pimentel.w@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "test": "yarn test",
+    "test": "jest test --runInBand",
     "dev": "ts-node ./src"
   },
   "devDependencies": {

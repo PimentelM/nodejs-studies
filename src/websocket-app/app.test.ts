@@ -77,7 +77,7 @@ describe("Event Reminder App", () => {
             });
 
             it("Due reminder is broadcasted to all clients", async () => {
-                let command = getValidCommand("Broadcast Event Name", 50);
+                let command = getValidCommand("Broadcast Event Name", 30);
                 let ws2 = await createOpenSocket(port);
                 let ws3 = await createOpenSocket(port);
 
@@ -88,6 +88,12 @@ describe("Event Reminder App", () => {
                 expect(r1).toMatch(/.*Broadcast Event Name.*/i);
                 expect(r2).toMatch(/.*Broadcast Event Name.*/i);
                 expect(r3).toMatch(/.*Broadcast Event Name.*/i);
+
+                // Close the sockets
+                ws2.close();
+                ws3.close();
+                await waitForSocketState(ws2, WebSocket.CLOSED);
+                await waitForSocketState(ws3, WebSocket.CLOSED);
             });
 
         });
