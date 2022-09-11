@@ -6,7 +6,12 @@ export class Reminder {
         public readonly id: ReminderID,
         public name: string,
         public date: Date,
-    ){}
+    ){
+        if(!this.name) throw new Error("Event should contain a name.");
+        if(!this.id) throw new Error("Event should contain an id.");
+        if(!this.date) throw new Error("Event should contain a date.");
+        if(!isFinite(this.date.getTime?.())) throw new Error("Invalid date object.");
+    }
 }
 
 type Timestamp = number;
@@ -27,9 +32,7 @@ export class EventReminder extends EventEmitter {
     }
 
     public canRegisterReminder(reminder: Reminder) : [canRegister : boolean, message? : string] {
-        if(!isFinite(reminder.date.getTime?.())) return [false, "Invalid date"];
         if(this.isExpired(reminder)) return [false, "Reminder is already expired"];
-        if(this.reminderIdToReminderMap.has(reminder.id)) return [false, "Reminder with the same ID alredy registered"];
 
         return [true];
     }
@@ -41,6 +44,9 @@ export class EventReminder extends EventEmitter {
     public registerReminder(reminder: Reminder) {
         let [canRegister, message] = this.canRegisterReminder(reminder);
         if(!canRegister) throw new Error(message);
+
+        // If it is already registered, unregister it before registering again.
+        if(this.reminderIdToReminderMap.has(reminder.id)) this.unregisterReminder(reminder.id);
 
         let timeUntilReminder = this.timeUntilReminder(reminder);
         let timeoutId = setTimeout(()=>{

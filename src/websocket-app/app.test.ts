@@ -2,6 +2,7 @@ import {App, AppCommand} from "./app";
 import WebSocket from "ws";
 import {createOpenSocket, sendMessageAndWaitForResponse, waitForNextMessage, waitForSocketState} from "./test-utils";
 import {InMemoryReminderRepository} from "./repositories";
+import {randomUUID} from "crypto";
 
 describe("Event Reminder App", () => {
 
@@ -145,11 +146,48 @@ describe("Event Reminder App", () => {
             });
 
         });
+
+        describe("When the command is invalid", () => {
+
+            it("Should not register reminder if name is missing", async () => {
+                let id = getValidId();
+                let command = getValidCommand({id});
+                delete command.name;
+
+                let response = await sendMessageAndWaitForResponse(ws, command);
+
+                expect(response).toMatch(/.*Error.*/i)
+                expect(await reminderRepository.findById(id)).toBeUndefined();
+            });
+
+            it("Should not register reminder if date is missing", async () => {
+                let id = getValidId();
+                let command = getValidCommand({id});
+                delete command.date;
+
+                let response = await sendMessageAndWaitForResponse(ws, command);
+
+                expect(response).toMatch(/.*Error.*/i)
+                expect(await reminderRepository.findById(id)).toBeUndefined();
+            })
+
+            it("Should not register reminder if date is invalid", async () => {
+                let id = getValidId();
+                let command = getValidCommand({id, date: "invalid date"});
+
+                let response = await sendMessageAndWaitForResponse(ws, command);
+
+                expect(response).toMatch(/.*Error.*/i)
+                expect(await reminderRepository.findById(id)).toBeUndefined();
+            });
+        });
+
     });
+
 });
 
 
-function getValidCommand(overwrites: object, milissecondsFromNow?: number): AppCommand {
+function getValidCommand(overwrites?: object, milissecondsFromNow?: number): AppCommand {
     return {
         type: "register-event-reminder",
         name: "event-name",
@@ -158,4 +196,7 @@ function getValidCommand(overwrites: object, milissecondsFromNow?: number): AppC
     }
 }
 
+function getValidId(){
+    return randomUUID();
+}
 

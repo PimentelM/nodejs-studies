@@ -11,7 +11,7 @@ function log(...args: any[]) {
 
 
 
-export type CommandType = "register-event-reminder" | "list-event-reminders" |"now";
+export type CommandType = "register-event-reminder" | "list-event-reminders" |"now" | "online";
 
 export type AppCommand = {
     type: CommandType;
@@ -93,26 +93,33 @@ export class App {
             // Handle message
             switch (data.type) {
                 case "register-event-reminder":
-                    let reminder = new Reminder(data.id ?? randomUUID(), data.name, new Date(data.date));
+                    let [err, reminder] = tryCatch(()=>new Reminder(data.id ?? randomUUID(), data.name, new Date(data.date)));
+                    if(err){
+                        return ws.send(`Error creating reminder from provided data: ${err.message}`);
+                    }
+
                     let [canRegister, message] = this.eventReminder.canRegisterReminder(reminder);
 
                     if (!canRegister) {
                         return ws.send(message);
                     }
 
-                    let [err] = await handlePromise(this.reminderRepository.save(reminder));
+                    let [saveError] = await handlePromise(this.reminderRepository.save(reminder));
 
-                    if(err){
-                        return ws.send(`Error saving reminder: ${err.message}`);
+                    if(saveError){
+                        return ws.send(`Error saving reminder: ${saveError.message}`);
                     }
 
                     this.eventReminder.registerReminder(reminder);
 
-                    ws.send(`Registered event reminder. We have ${this.clients.size} connected clients.`);
+                    ws.send(`Registered event reminder.`);
                     break;
                 case "list-event-reminders":
                     let reminders = this.eventReminder.listActiveReminders();
                     ws.send(JSON.stringify(reminders));
+                    break;
+                case "online":
+                    ws.send("Online users: " + this.clients.size);
                     break;
                 case "now":
                     ws.send(`Current time: ${new Date().toISOString()}`);

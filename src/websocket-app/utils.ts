@@ -1,6 +1,6 @@
 
 
-export const tryCatch = (fn: Function) : [err: Error | any, result: any]=> {
+export const tryCatch = <T>(fn: ()=> T) : [err: Error | any, result: T | any]=> {
     try {
         return [null, fn()];
     } catch (e : any) {
@@ -8,7 +8,7 @@ export const tryCatch = (fn: Function) : [err: Error | any, result: any]=> {
     }
 }
 
-export const handlePromise =  async <T>(promise: Promise<T>) : Promise<[err: Error | any, result: T | null]>=> {
+export const handlePromise =  async <T>(promise: Promise<T>) : Promise<[err: Error | any, result: T | any]>=> {
     try {
         return [null, await promise];
     } catch (e : any) {
