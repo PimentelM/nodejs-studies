@@ -1,4 +1,4 @@
-import {App, AppCommand} from "../app";
+import {App, AppCommand} from "../index";
 import WebSocket from "ws";
 import {
     createOpenSocket,

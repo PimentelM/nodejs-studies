@@ -1,4 +1,4 @@
-import {App} from "./app/app";
+import {App} from "./app";
 import WebSocket from "ws";
 import {FileSystemBasedReminderRepository} from "./app/repositories";
 
