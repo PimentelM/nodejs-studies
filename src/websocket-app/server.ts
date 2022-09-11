@@ -1,5 +1,6 @@
 import {App} from "./app";
 import WebSocket from "ws";
+import {ReminderRepository} from "./repositories";
 
 export interface Config {
     port: number;
@@ -9,7 +10,10 @@ async function initServer(config : Config) {
     // Create wss
     const wss = new WebSocket.Server({ port: config.port });
 
-    new App(wss);
+    // Create reminder repository
+    const reminderRepository = new ReminderRepository(`_PERSISTENCE_PATH_`);
+
+    let app = new App(wss, reminderRepository);
 
 }
 

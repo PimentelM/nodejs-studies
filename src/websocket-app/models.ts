@@ -12,6 +12,7 @@ export class Reminder {
 type Timestamp = number;
 export class EventReminder extends EventEmitter {
     private reminderTimeoutMap : Map<ReminderID, NodeJS.Timeout> = new Map();
+    private reminderIdToReminderMap : Map<ReminderID, Reminder> = new Map();
 
     constructor(private now : ()=> Timestamp = Date.now) {
         super();
@@ -28,7 +29,13 @@ export class EventReminder extends EventEmitter {
     public canRegisterReminder(reminder: Reminder) : [canRegister : boolean, message? : string] {
         if(!isFinite(reminder.date.getTime?.())) return [false, "Invalid date"];
         if(this.isExpired(reminder)) return [false, "Reminder is already expired"];
+        if(this.reminderIdToReminderMap.has(reminder.id)) return [false, "Reminder with the same ID alredy registered"];
+
         return [true];
+    }
+
+    public listActiveReminders() : Reminder[] {
+        return Array.from(this.reminderIdToReminderMap.values());
     }
 
     public registerReminder(reminder: Reminder) {
@@ -39,9 +46,11 @@ export class EventReminder extends EventEmitter {
         let timeoutId = setTimeout(()=>{
             this.emit('reminder', reminder);
             this.reminderTimeoutMap.delete(reminder.id);
+            this.reminderIdToReminderMap.delete(reminder.id);
         }, timeUntilReminder);
 
         this.reminderTimeoutMap.set(reminder.id, timeoutId);
+        this.reminderIdToReminderMap.set(reminder.id, reminder);
     }
 
     public unregisterReminder(reminderID: ReminderID) {
@@ -49,6 +58,7 @@ export class EventReminder extends EventEmitter {
 
         clearTimeout(this.reminderTimeoutMap.get(reminderID));
         this.reminderTimeoutMap.delete(reminderID);
+        this.reminderIdToReminderMap.delete(reminderID);
     }
 
 }

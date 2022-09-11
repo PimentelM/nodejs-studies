@@ -1,31 +1,55 @@
 import {App, AppCommand} from "./app";
 import WebSocket from "ws";
 import {createOpenSocket, sendMessageAndWaitForResponse, waitForNextMessage, waitForSocketState} from "./test-utils";
+import {InMemoryReminderRepository} from "./repositories";
 
 describe("Event Reminder App", () => {
 
     let port = 65501;
     let wss: WebSocket.Server;
     let app: App;
-    let testCount = 0;
+    let reminderRepository: InMemoryReminderRepository;
 
     let ws: WebSocket;
 
-    beforeEach(async () => {
-        // Resets the whole app, so we don't have random reminders from previous tests popping up
-        wss = new WebSocket.Server({ port });
-        app = new App(wss);
+    async function initializeApp(repository?: InMemoryReminderRepository) {
+        wss = new WebSocket.Server({port});
+        reminderRepository = repository ?? new InMemoryReminderRepository();
+        app = new App(wss, reminderRepository);
 
         ws = new WebSocket(`ws://localhost:${port}`);
         await waitForSocketState(ws, WebSocket.OPEN);
-    });
+    }
 
-    afterEach(async () => {
+    async function closeApp() {
         ws.close();
         await waitForSocketState(ws, WebSocket.CLOSED);
         wss.close();
+    }
+
+    beforeEach(async () => {
+        // Resets the whole app, so we don't have random reminders from previous tests popping up
+        await initializeApp();
     });
 
+    afterEach(async () => {
+        await closeApp();
+    });
+
+    it("Should persist reminders between app restarts", async () => {
+        let command = getValidCommand({name: "This event survived an app restart"}, 100);
+        await sendMessageAndWaitForResponse(ws, command);
+        let currentRepository = reminderRepository;
+
+        // Restart app
+        await closeApp();
+        await initializeApp(currentRepository);
+
+        // Check if reminder is still there
+        let response = await sendMessageAndWaitForResponse(ws, {type: "list-event-reminders"});
+        let reminders = JSON.parse(response);
+        expect(reminders.length).toBe(1);
+    });
 
 
     it("Handles malformed messages", async () => {
@@ -42,23 +66,47 @@ describe("Event Reminder App", () => {
         expect(response).toMatch(/.*Unknown message.*/i)
     });
 
+    describe("[Command] list-event-reminders", () => {
+
+        it("Should return empty list if no reminders are registered", async () => {
+            let response = await sendMessageAndWaitForResponse(ws, {type: "list-event-reminders"});
+            let reminders = JSON.parse(response);
+            expect(reminders).toEqual([]);
+        });
+
+        it("Should return list of reminders", async () => {
+            let command = getValidCommand({name: "Event1"}, 100);
+            await sendMessageAndWaitForResponse(ws, command);
+            command = getValidCommand({name: "Event2"}, 100);
+            await sendMessageAndWaitForResponse(ws, command);
+
+            let response = await sendMessageAndWaitForResponse(ws, {type: "list-event-reminders"});
+
+            let reminders = JSON.parse(response);
+            let reminderNames = reminders.map((r: any) => r.name);
+            expect(reminders.length).toBe(2);
+            expect(reminderNames).toContain("Event1");
+            expect(reminderNames).toContain("Event2");
+        });
+
+    });
 
     describe("[Command] register-event-reminder", () => {
 
         describe("When the command is valid", () => {
-            let getValidCommand = (name: string, milissecondsFromNow?: number) : AppCommand => ({
-                type: "register-event-reminder",
-                name: name,
-                date: Date.now() + (milissecondsFromNow ?? 15)
-            });
 
-            it.skip("should save event reminder to the database", () => {
+            it("should save event reminder to the database", async () => {
+                let command = getValidCommand({name: "Saved to the Database"});
+
+                let response = await sendMessageAndWaitForResponse(ws, command);
+
                 // Check the event was saved to database
-
+                let [reminder] = await reminderRepository.findByName("Saved to the Database");
+                expect(reminder).toBeDefined();
             });
 
             it("should send back a success message", async () => {
-                let command = getValidCommand("Successful Event");
+                let command = getValidCommand({name: "Successful Event"});
 
                 let response = await sendMessageAndWaitForResponse(ws, command);
 
@@ -67,7 +115,7 @@ describe("Event Reminder App", () => {
             });
 
             it("should receive a reminder when the event is due", async () => {
-                let command = getValidCommand("Single Client Event", 20);
+                let command = getValidCommand({name: "Single Client Event"}, 20);
 
                 let response = await sendMessageAndWaitForResponse(ws, command);
                 let reminderMessage = await waitForNextMessage(ws);
@@ -77,12 +125,12 @@ describe("Event Reminder App", () => {
             });
 
             it("Due reminder is broadcasted to all clients", async () => {
-                let command = getValidCommand("Broadcast Event Name", 30);
+                let command = getValidCommand({name: "Broadcast Event Name"}, 30);
                 let ws2 = await createOpenSocket(port);
                 let ws3 = await createOpenSocket(port);
 
                 let response = await sendMessageAndWaitForResponse(ws, command);
-                let [r1,r2,r3] = await Promise.all([ws, ws2, ws3].map(ws => waitForNextMessage(ws)));
+                let [r1, r2, r3] = await Promise.all([ws, ws2, ws3].map(ws => waitForNextMessage(ws)));
 
                 expect(response).toMatch(/.*Registered event reminder.*/i)
                 expect(r1).toMatch(/.*Broadcast Event Name.*/i);
@@ -98,6 +146,16 @@ describe("Event Reminder App", () => {
 
         });
     });
-})
+});
+
+
+function getValidCommand(overwrites: object, milissecondsFromNow?: number): AppCommand {
+    return {
+        type: "register-event-reminder",
+        name: "event-name",
+        date: Date.now() + (milissecondsFromNow ?? 15),
+        ...overwrites
+    }
+}
 
 

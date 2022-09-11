@@ -1,7 +1,8 @@
 import WebSocket, {RawData} from "ws";
-import {tryCatch} from "./utils";
+import {handlePromise, tryCatch} from "./utils";
 import {EventReminder, Reminder} from "./models";
 import {randomUUID} from "crypto";
+import {IReminderRepository} from "./repositories";
 
 
 function log(...args: any[]) {
@@ -10,7 +11,7 @@ function log(...args: any[]) {
 
 
 
-export type CommandType = "register-event-reminder" | "now";
+export type CommandType = "register-event-reminder" | "list-event-reminders" |"now";
 
 export type AppCommand = {
     type: CommandType;
@@ -22,15 +23,40 @@ export class App {
 
     private eventReminder: EventReminder = new EventReminder();
 
-    constructor(private wss: WebSocket.Server, private logger : (...args: any[]) => void = log) {
+    public initPromise: Promise<void>;
+
+    constructor(private wss: WebSocket.Server, private reminderRepository: IReminderRepository, private logger : (...args: any[]) => void = log) {
         this.registerConnectionHandler();
         this.registerEventReminderHandler();
+        this.initPromise = this.init().then();
+    }
+
+    public async init(){
+        // Load saved reminders
+        let [err, reminders] = await handlePromise(this.reminderRepository.findAll());
+
+        if(err){
+            throw new Error(`Error loading reminders: ${err.message}`);
+        }
+
+        for(let reminder of reminders!){
+            let [canRegister, message] = this.eventReminder.canRegisterReminder(reminder);
+            if(!canRegister){
+                this.log(`Can't register reminder: ${reminder}: ${message}`);
+                await this.reminderRepository.delete(reminder.id);
+                continue;
+            }
+            this.log(`Loaded persisted reminder: ${reminder.id}`);
+            this.eventReminder.registerReminder(reminder);
+        }
+
     }
 
     private registerEventReminderHandler() {
         this.eventReminder.on('reminder', (reminder) => {
             this.clients.forEach((client) => {
                 client.send(`We are reminding you from this event: ${reminder.name}`);
+                this.reminderRepository.delete(reminder.id).then();
             });
         });
     }
@@ -52,7 +78,9 @@ export class App {
     }
 
     private registerMessageHandler(ws: WebSocket.WebSocket) {
-        ws.on('message', (message) => {
+        ws.on('message', async (message) => {
+            await this.initPromise; // Only handle messages when app is fully initialized
+
             this.log(`Received message: ${message}`);
 
             let [err, data] = tryCatch(() => App.parseMessage(message));
@@ -72,8 +100,19 @@ export class App {
                         return ws.send(message);
                     }
 
+                    let [err] = await handlePromise(this.reminderRepository.save(reminder));
+
+                    if(err){
+                        return ws.send(`Error saving reminder: ${err.message}`);
+                    }
+
                     this.eventReminder.registerReminder(reminder);
+
                     ws.send(`Registered event reminder. We have ${this.clients.size} connected clients.`);
+                    break;
+                case "list-event-reminders":
+                    let reminders = this.eventReminder.listActiveReminders();
+                    ws.send(JSON.stringify(reminders));
                     break;
                 case "now":
                     ws.send(`Current time: ${new Date().toISOString()}`);
