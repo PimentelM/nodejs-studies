@@ -67,6 +67,19 @@ describe('Repositories', () => {
             expect(retrievedReminders).toEqual([]);
         });
 
+        it("Should be able to replace saved register when ID is the same", async ()=>{
+            let id = getValidId();
+            let reminder = getValidReminder({id, name: "Old name"});
+            await repository.save(reminder);
+
+            let newReminder = getValidReminder({id, name: "New name"});
+            await repository.save(newReminder);
+
+            let retrievedReminder = await repository.findById(id);
+            expect(retrievedReminder).toEqual(newReminder);
+
+        })
+
 
     });
 
