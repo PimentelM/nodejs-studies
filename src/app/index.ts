@@ -28,7 +28,7 @@ export class App {
     constructor(private wss: WebSocket.Server, private reminderRepository: IReminderRepository, private logger : (...args: any[]) => void = log) {
         this.registerConnectionHandler();
         this.registerEventReminderHandler();
-        this.initPromise = this.init().then();
+        this.initPromise = this.init();
     }
 
     public async init(){
@@ -56,7 +56,7 @@ export class App {
         this.eventReminder.on('reminder', (reminder) => {
             this.clients.forEach((client) => {
                 client.send(`We are reminding you from this event: ${reminder.name}`);
-                this.reminderRepository.delete(reminder.id).then();
+                this.reminderRepository.delete(reminder.id);
             });
         });
     }

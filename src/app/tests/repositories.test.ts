@@ -1,8 +1,8 @@
 import {FileSystemBasedReminderRepository, InMemoryReminderRepository} from "../repositories";
 import {getValidId, getValidReminder} from "./test-utils";
 
-FileSystemBasedReminderRepository.prototype.toString = ()=> "FileSystemBasedReminderRepository";
-InMemoryReminderRepository.prototype.toString = ()=> "InMemoryReminderRepository";
+FileSystemBasedReminderRepository.prototype.toString = ()=> FileSystemBasedReminderRepository.name;
+InMemoryReminderRepository.prototype.toString = ()=> InMemoryReminderRepository.name;
 
 describe('Repositories', () => {
     let inMemoryReminderRepository: InMemoryReminderRepository = new InMemoryReminderRepository();
